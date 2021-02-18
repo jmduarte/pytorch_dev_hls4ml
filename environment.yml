@@ -1,0 +1,24 @@
+name: pytorch
+channels:
+  - pytorch
+  - defaults
+dependencies:
+  - python=3.6.12
+  - cudatoolkit=11
+  - numpy=1.19.2
+  - pip=20.3.3
+  - pytorch=1.7.1
+  - torchaudio=0.7.2
+  - torchvision=0.8.2
+  - pip:
+    - autopep8==1.5.5
+    - h5pickle==0.4.2
+    - h5py==3.1.0
+    - matplotlib==3.3.4
+    - pandas==1.1.5
+    - pyyaml==5.4.1
+    - scikit-learn==0.24.1
+    - scipy==1.5.4
+    - setgpu==0.0.7
+    - sklearn==0.0
+    - git+https://github.com/Duchstf/hls4ml@onnx_dev_pytorch
