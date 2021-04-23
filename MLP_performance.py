@@ -98,3 +98,14 @@ y_pred = hls_model.predict(X_test)
 print("hls4ml {} Accuracy: {}".format(config['Model']['Precision'],accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))))
 print("PyTorch Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_pt, axis=1))))
 
+####-------------ONNX TEST---------------####
+import onnx
+onnx_model = onnx.load('32b_70Pruned_FullModel.onnx')
+
+onnx_config = hls4ml.utils.config_from_onnx_model(onnx_model, granularity='model')
+hls_model_onnx = hls4ml.converters.convert_from_onnx_model(onnx_model, hls_config=onnx_config)
+
+hls_model_onnx.compile()
+
+y_pred_onnx = hls_model_onnx.predict(X_test)
+print("ONNX Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_onnx, axis=1))))
