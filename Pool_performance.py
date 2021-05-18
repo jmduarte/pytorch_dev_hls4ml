@@ -27,7 +27,7 @@ class maxpool1d_model(nn.Module):
         return x
 
 # Pooling layer 
-input_shape = (10, 100) # (Channels, Length)
+input_shape = (10, 2) # (Channels, Length)
 
 model = maxpool1d_model()
 
@@ -35,8 +35,7 @@ model = maxpool1d_model()
 input_shape_batch = (1,) + input_shape
 X_test = torch.from_numpy(np.random.rand(*(input_shape_batch)))
 X_test = X_test.to(torch.float32)
-print(X_test.shape)
-y_pred_pt = model(X_test).detach().cpu().numpy().flatten()
+y_pred_pt = model(X_test).detach().cpu().numpy()
 
 config = hls4ml.utils.config_from_pytorch_model(model, granularity='model')
 config['Model']['Precision'] = 'ap_fixed<16,6>'
@@ -48,8 +47,16 @@ hls_model = hls4ml.converters.convert_from_pytorch_model(model,
 hls_model.compile()
 
 from sklearn.metrics import accuracy_score
-y_pred = hls_model.predict(X_test.detach().cpu().numpy())
+X_test = X_test.detach().cpu().numpy()
+y_pred = hls_model.predict(X_test)
+y_pred = y_pred.reshape(y_pred_pt.shape)
 
-df = pd.DataFrame({'PyTorch': y_pred_pt, 'hls4ml': y_pred})
+print('X_test', X_test.shape) 
+print(X_test)
+print('y_pred_pt', y_pred_pt.shape)
+print(y_pred_pt)
+print('y_pred', y_pred.shape)
+print(y_pred)
 
+df = pd.DataFrame({'PyTorch': y_pred_pt.flatten(), 'hls4ml': y_pred.flatten()})
 print(df)
