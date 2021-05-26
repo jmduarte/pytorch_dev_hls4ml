@@ -13,9 +13,25 @@ from datetime import datetime
 import os
 import os.path as path
 from optparse import OptionParser
-
+import pandas as pd
 import hls4ml
+from sklearn.metrics import accuracy_score, roc_curve, auc
+import sys
 
+def roc_data(y, predict_test, labels):
+    df = pd.DataFrame()
+    fpr = {}
+    tpr = {}
+    auc1 = {}
+
+    for i, label in enumerate(labels):
+        df[label] = y[:,i]
+        df[label + '_pred'] = predict_test[:,i]
+
+        fpr[label], tpr[label], threshold = roc_curve(df[label],df[label+'_pred'])
+
+        auc1[label] = auc(fpr[label], tpr[label])
+    return fpr, tpr, auc1
 
 ## Load yaml config
 def parse_config(config_file) :
@@ -25,6 +41,7 @@ def parse_config(config_file) :
     return yaml.load(config, Loader=yaml.FullLoader)
 
 yamlConfig = parse_config("yamlConfig.yml")
+labels = yamlConfig['Labels']
 
 # Setup test data set
 test_dataset = jet_dataset.ParticleJetDataset("./train_data/test/", yamlConfig)
@@ -82,8 +99,6 @@ model.load_state_dict(dict_model)
 x = torch.from_numpy(X_test)
 x = x.to(torch.float32)
 y_pred_pt = model(x).detach().cpu().numpy()
-print(x)
-print(y_pred_pt)
 
 config = hls4ml.utils.config_from_pytorch_model(model, granularity='model')
 
@@ -93,10 +108,33 @@ hls_model = hls4ml.converters.convert_from_pytorch_model(model, input_shape = [N
 
 hls_model.compile()
 
-from sklearn.metrics import accuracy_score
 y_pred = hls_model.predict(X_test)
 print("hls4ml {} Accuracy: {}".format(config['Model']['Precision'],accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))))
 print("PyTorch Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_pt, axis=1))))
+
+def find_nearest(array,value):
+    idx = (np.abs(array-value)).argmin()
+    return idx, array[idx]
+
+fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred, labels=labels)
+for l in labels:
+    idx, val = find_nearest(tpr_hls[l], 0.5)
+    print('hls4ml', l, 'eff_bkg @ eff_sig=0.5:', fpr_hls[l][idx])
+    print('hls4ml', l, 'auc:                  ', auc_hls[l])
+fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
+auc_hls_ave = np.average([auc_hls[l] for l in labels])
+print('hls4ml average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
+print('hls4ml average', 'auc                  :', auc_hls_ave)
+
+fpr_pt, tpr_pt, auc_pt = roc_data(y_test, y_pred_pt, labels=labels)
+for l in labels:
+    idx, val = find_nearest(tpr_pt[l], 0.5)
+    print('PyTorch', l, 'eff_bkg @ eff_sig=0.5:', fpr_pt[l][idx])
+    print('PyTorch', l, 'auc:                  ', auc_pt[l])
+fpr_pt_ave = np.average([fpr_pt[l][idx] for l in labels])
+auc_pt_ave = np.average([auc_pt[l] for l in labels])
+print('PyTorch average', 'eff_bkg @ eff_sig=0.5:', fpr_pt_ave)
+print('PyTorch average', 'auc                  :', auc_pt_ave)
 
 ####-------------ONNX TEST---------------####
 import onnx
