@@ -147,3 +147,12 @@ hls_model_onnx.compile()
 
 y_pred_onnx = hls_model_onnx.predict(X_test)
 print("ONNX Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_onnx, axis=1))))
+fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred_onnx, labels=labels)
+for l in labels:
+    idx, val = find_nearest(tpr_hls[l], 0.5)
+    print('ONNX', l, 'eff_bkg @ eff_sig=0.5:', fpr_hls[l][idx])
+    print('ONNX', l, 'auc:                  ', auc_hls[l])
+fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
+auc_hls_ave = np.average([auc_hls[l] for l in labels])
+print('ONNX average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
+print('ONNX average', 'auc                  :', auc_hls_ave)
