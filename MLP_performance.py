@@ -137,6 +137,7 @@ print('PyTorch average', 'eff_bkg @ eff_sig=0.5:', fpr_pt_ave)
 print('PyTorch average', 'auc                  :', auc_pt_ave)
 
 ####-------------ONNX TEST---------------####
+sys.exit()
 import onnx
 onnx_model = onnx.load('32b_70Pruned_FullModel.onnx')
 
