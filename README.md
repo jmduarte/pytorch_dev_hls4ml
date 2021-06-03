@@ -10,6 +10,11 @@ activate environment
 conda activate pytorch
 ```
 
+get data
+```
+source jet_data_download.sh
+```
+
 test model
 ```
 python MLP_performance.py
