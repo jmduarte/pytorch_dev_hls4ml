@@ -108,24 +108,14 @@ hls_model = hls4ml.converters.convert_from_pytorch_model(model, input_shape = [N
 
 hls_model.compile()
 
-y_pred = hls_model.predict(X_test)
-print("hls4ml {} Accuracy: {}".format(config['Model']['Precision'],accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))))
-print("PyTorch Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_pt, axis=1))))
-
 def find_nearest(array,value):
     idx = (np.abs(array-value)).argmin()
     return idx, array[idx]
 
-fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred, labels=labels)
-for l in labels:
-    idx, val = find_nearest(tpr_hls[l], 0.5)
-    print('hls4ml', l, 'eff_bkg @ eff_sig=0.5:', fpr_hls[l][idx])
-    print('hls4ml', l, 'auc:                  ', auc_hls[l])
-fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
-auc_hls_ave = np.average([auc_hls[l] for l in labels])
-print('hls4ml average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
-print('hls4ml average', 'auc                  :', auc_hls_ave)
 
+y_pred = hls_model.predict(X_test)
+
+print("PyTorch Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_pt, axis=1))))
 fpr_pt, tpr_pt, auc_pt = roc_data(y_test, y_pred_pt, labels=labels)
 for l in labels:
     idx, val = find_nearest(tpr_pt[l], 0.5)
@@ -136,17 +126,39 @@ auc_pt_ave = np.average([auc_pt[l] for l in labels])
 print('PyTorch average', 'eff_bkg @ eff_sig=0.5:', fpr_pt_ave)
 print('PyTorch average', 'auc                  :', auc_pt_ave)
 
+print("PyTorch->hls4ml {} Accuracy: {}".format(config['Model']['Precision'],accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred, axis=1))))
+fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred, labels=labels)
+for l in labels:
+    idx, val = find_nearest(tpr_hls[l], 0.5)
+    print('PyTorch->hls4ml', l, 'eff_bkg @ eff_sig=0.5:', fpr_hls[l][idx])
+    print('PyTorch->hls4ml', l, 'auc:                  ', auc_hls[l])
+fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
+auc_hls_ave = np.average([auc_hls[l] for l in labels])
+print('PyTorch->hls4ml average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
+print('PyTorch->hls4ml average', 'auc                  :', auc_hls_ave)
+
 ####-------------ONNX TEST---------------####
+exportname="32b_70Pruned_FullModel"
+dummy_input = torch.randn(1,16)
+dynamic_axes = {'input': {0: 'batch'}, 'output': {0: 'batch'}}
+torch.onnx.export(model, dummy_input, exportname+".onnx", verbose=True, input_names=['input'], output_names=['output'], dynamic_axes=dynamic_axes)
 
 import onnx
-onnx_model = onnx.load('32b_70Pruned_FullModel.onnx')
+import onnxruntime as rt
 
+
+sess = rt.InferenceSession('32b_70Pruned_FullModel.onnx')
+input_name = sess.get_inputs()[0].name
+y_pred_onnx = sess.run(None, {input_name: X_test.astype(np.float32)})[0]
+
+onnx_model = onnx.load('32b_70Pruned_FullModel.onnx')
 onnx_config = hls4ml.utils.config_from_onnx_model(onnx_model, granularity='model')
 hls_model_onnx = hls4ml.converters.convert_from_onnx_model(onnx_model, hls_config=onnx_config)
 
 hls_model_onnx.compile()
 
-y_pred_onnx = hls_model_onnx.predict(X_test)
+y_pred_onnx_hls = hls_model_onnx.predict(X_test)
+
 print("ONNX Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_onnx, axis=1))))
 fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred_onnx, labels=labels)
 for l in labels:
@@ -157,3 +169,14 @@ fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
 auc_hls_ave = np.average([auc_hls[l] for l in labels])
 print('ONNX average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
 print('ONNX average', 'auc                  :', auc_hls_ave)
+
+print("ONNX->hls4ml Accuracy: {}".format(accuracy_score(np.argmax(y_test, axis=1), np.argmax(y_pred_onnx_hls, axis=1))))
+fpr_hls, tpr_hls, auc_hls = roc_data(y_test, y_pred_onnx_hls, labels=labels)
+for l in labels:
+    idx, val = find_nearest(tpr_hls[l], 0.5)
+    print('ONNX->hls4ml', l, 'eff_bkg @ eff_sig=0.5:', fpr_hls[l][idx])
+    print('ONNX->hls4ml', l, 'auc:                  ', auc_hls[l])
+fpr_hls_ave = np.average([fpr_hls[l][idx] for l in labels])
+auc_hls_ave = np.average([auc_hls[l] for l in labels])
+print('ONNX->hls4ml average', 'eff_bkg @ eff_sig=0.5:', fpr_hls_ave)
+print('ONNX->hls4ml average', 'auc                  :', auc_hls_ave)

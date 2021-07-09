@@ -22,3 +22,6 @@ dependencies:
     - setgpu==0.0.7
     - sklearn==0.0
     - git+https://github.com/Duchstf/hls4ml@onnx_dev_pytorch
+    - onnx
+    - onnxruntime
+    - brevitas
